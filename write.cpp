@@ -3,7 +3,14 @@
 #include "rplidar_data/alpha.h"
 #include <cstdlib>
 #include "math.h"
+#include "sensor_msgs/JointState.h"
 
+#define RAD2DATA(x) ((x)*(2047/M_PI)+2048)
+#define DATA2RAD(x) ((x)-2048)*(M_PI/2047)
+
+double current;
+
+int t = 1;
 
 class SubscribeAndPublish
 {
@@ -11,48 +18,49 @@ public:
     SubscribeAndPublish()
     {
     client = n.serviceClient<dynamixel_workbench_msgs::DynamixelCommand>("/dynamixel_workbench/dynamixel_command");
-    sub = n.subscribe("/controled_theta",1,&SubscribeAndPublish::callback,this);
+    sub1 = n.subscribe("/controled_theta",1,&SubscribeAndPublish::callback1,this);
+    sub2 = n.subscribe("/dynamixel_workbench/joint_states",1,&SubscribeAndPublish::callback2,this);
     }
    
-    void callback(const rplidar_data::alpha& input)
+    void callback1(const rplidar_data::alpha& input)
     {
       dynamixel_workbench_msgs::DynamixelCommand srv;
       std::string item_command = "";
       std::string item_addr = "Goal_Position";
+      int ID = 1;
       double phi = atan(1 / sqrt( (1/tan(input.alpha)) * (1/tan(input.alpha)) - 1 ));
       int Limit_Angle = (int)((2047/M_PI)*phi + 2048);
+
       if (Limit_Angle<2048 && Limit_Angle>3072)
 	{
 	  return;
 	}
-      int Angle = 0;
-      int t = 2048;
-      while (1)
-	{
-          int ID = 1;
-          int value = t;
+
+      if(sqrt((current-Limit_Angle)*(current-Limit_Angle))<20) // number 1
+      {
           srv.request.command = item_command;
           srv.request.id = ID;
           srv.request.addr_name = item_addr;
-          srv.request.value = value;
-          t++;
-          if (t > Limit_Angle)
-          {
-              while(t > 4096-Limit_Angle)
-              {
-                  int value = t;
-                  srv.request.command = item_command;
-                  srv.request.id = ID;
-                  srv.request.addr_name = item_addr;
-                  srv.request.value = value;
-                  t--;
-              }
-          }
-          if(t==2048)
-          {
-              break;
-          }
-	}
+          srv.request.value = 4096-Limit_Angle;
+          t = 0;
+      }
+
+      if(sqrt((4096-Limit_Angle-current)*(4096-Limit_Angle-current))<20) // number 2
+      {
+          srv.request.command = item_command;
+          srv.request.id = ID;
+          srv.request.addr_name = item_addr;
+          srv.request.value = 2048;
+          t = 1;
+      }
+
+      if(sqrt((2048-current)*(2048-current))<20 & t==1 ) // number 3
+      {
+          srv.request.command = item_command;
+          srv.request.id = ID;
+          srv.request.addr_name = item_addr;
+          srv.request.value = Limit_Angle;
+      }
 
       if (client.call(srv))
           {
@@ -64,11 +72,16 @@ public:
               ROS_ERROR("Failed to call dynamixel_command");
           }
     }
+
+    void callback2(const sensor_msgs::JointState& input2)
+    {
+        current = input2.position[0];
+    }
 private:
     ros::NodeHandle n;
     ros::ServiceClient client;
-    ros::Subscriber sub;
-
+    ros::Subscriber sub1;
+    ros::Subscriber sub2;
 };
 
 int main(int argc, char **argv)
