@@ -11,6 +11,9 @@
 double current;
 
 int t = 1;
+int Limit_Angle;
+int pseudo_Angle;
+int start = 0;
 
 class SubscribeAndPublish
 {
@@ -28,38 +31,45 @@ public:
       std::string item_command = "";
       std::string item_addr = "Goal_Position";
       int ID = 1;
-      double phi = atan(1 / sqrt( (1/tan(input.alpha)) * (1/tan(input.alpha)) - 1 ));
-      int Limit_Angle = (int)((2047/M_PI)*phi + 2048);
 
       if (Limit_Angle<2048 && Limit_Angle>3072)
 	{
 	  return;
 	}
 
-      if(sqrt((current-Limit_Angle)*(current-Limit_Angle))<20) // number 1
+      if(sqrt((current-pseudo_Angle)*(current-pseudo_Angle))<20) // number 1
       {
           srv.request.command = item_command;
           srv.request.id = ID;
           srv.request.addr_name = item_addr;
-          srv.request.value = 4096-Limit_Angle;
+          pseudo_Angle = Limit_Angle;
+          srv.request.value = 4096-pseudo_Angle;
           t = 0;
       }
 
-      if(sqrt((4096-Limit_Angle-current)*(4096-Limit_Angle-current))<20) // number 2
+      if(sqrt((4096-pseudo_Angle-current)*(4096-pseudo_Angle-current))<20) // number 2
       {
           srv.request.command = item_command;
           srv.request.id = ID;
           srv.request.addr_name = item_addr;
-          srv.request.value = 2048;
+          pseudo_Angle = Limit_Angle;
+          srv.request.value = pseudo_Angle;
           t = 1;
       }
 
       if(sqrt((2048-current)*(2048-current))<20 & t==1 ) // number 3
       {
-          srv.request.command = item_command;
-          srv.request.id = ID;
-          srv.request.addr_name = item_addr;
-          srv.request.value = Limit_Angle;
+          double phi = atan(1 / sqrt( (1/tan(input.alpha)) * (1/tan(input.alpha)) - 1 ));
+          Limit_Angle = (int)((2047/M_PI)*phi + 2048);
+          if(start==0)
+          {
+              srv.request.command = item_command;
+              srv.request.id = ID;
+              srv.request.addr_name = item_addr;
+              srv.request.value = Limit_Angle;
+              pseudo_Angle = Limit_Angle;
+              ++start;
+          }
       }
 
       if (client.call(srv))
