@@ -7,6 +7,11 @@
 
 #define RAD2DATA(x) ((x)*(2047/M_PI)+2048)
 #define DATA2RAD(x) ((x)-2048)*(M_PI/2047)
+#define DEG2RAD(x) ((x)*M_PI/180)
+#define Lidar_motor 1
+#define center_point RAD2DATA(DEG2RAD(0)) // 0 deg
+#define motor_Limit DEG2RAD(60) // 60 deg
+#define Tolerance (DEG2RAD(1.75))*(2047/M_PI)  // 1.75 deg
 
 double current;
 
@@ -30,42 +35,44 @@ public:
       dynamixel_workbench_msgs::DynamixelCommand srv;
       std::string item_command = "";
       std::string item_addr = "Goal_Position";
-      int ID = 1;
+      int ID = Lidar_motor;
+      srv.request.command = item_command;
+      srv.request.id = ID;
+      srv.request.addr_name = item_addr;
 
-      if (Limit_Angle<2048 && Limit_Angle>3072)
+      //check///////////////////////////////////////////////////////////////////////////////
+      printf("\x1b[34m""[checking operation]""\x1b[0m");
+      ROS_INFO("[Target,current]: [%f~%f] ,%f",pseudo_Angle,center_point-(pseudo_Angle-center_point),current);
+
+      //safe guard
+      if (Limit_Angle<center_point || Limit_Angle>RAD2DATA(motor_Limit))
 	{
+          ROS_INFO("Exceed motor limit!");
 	  return;
 	}
 
-      if(sqrt((current-pseudo_Angle)*(current-pseudo_Angle))<20) // number 1
+      //upper limit point
+      if(sqrt((current-pseudo_Angle)*(current-pseudo_Angle))<Tolerance) // number 1
       {
-          srv.request.command = item_command;
-          srv.request.id = ID;
-          srv.request.addr_name = item_addr;
           pseudo_Angle = Limit_Angle;
-          srv.request.value = 4096-pseudo_Angle;
+          srv.request.value = center_point-(pseudo_Angle-center_point);
           t = 0;
       }
 
-      if(sqrt((4096-pseudo_Angle-current)*(4096-pseudo_Angle-current))<20) // number 2
+      //lower limit point
+      if(sqrt((center_point-(pseudo_Angle-center_point)-current)*(center_point-(pseudo_Angle-center_point)-current))<Tolerance) // number 2
       {
-          srv.request.command = item_command;
-          srv.request.id = ID;
-          srv.request.addr_name = item_addr;
-          pseudo_Angle = Limit_Angle;
           srv.request.value = pseudo_Angle;
           t = 1;
       }
 
-      if(sqrt((2048-current)*(2048-current))<20 & t==1 ) // number 3
+      //center point and update limit
+      if(sqrt((center_point-current)*(center_point-current))<Tolerance && t==1 ) // number 3
       {
           double phi = atan(1 / sqrt( (1/tan(input.alpha)) * (1/tan(input.alpha)) - 1 ));
-          Limit_Angle = (int)((2047/M_PI)*phi + 2048);
+          Limit_Angle = (int)RAD2DATA(phi);
           if(start==0)
           {
-              srv.request.command = item_command;
-              srv.request.id = ID;
-              srv.request.addr_name = item_addr;
               srv.request.value = Limit_Angle;
               pseudo_Angle = Limit_Angle;
               ++start;
@@ -74,8 +81,6 @@ public:
 
       if (client.call(srv))
           {
-              ROS_INFO("send ID and Position Value : %ld, %ld", (long int)srv.request.id, (long int)srv.request.value);
-              ROS_INFO("receive result : %ld", (bool)srv.response.comm_result);
           }
         else
           {
@@ -96,11 +101,24 @@ private:
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "write");
-  SubscribeAndPublish NH;
-  while(ros::ok())
-    {
-    ros::spinOnce();
-    }
-  return 0;
+    printf("\n");
+    printf("\n");
+    printf("This is Lidar_servo_controller node!\n");
+    printf("\n");
+    printf("made by Bum Geun Park, 2021.05\n");
+    printf("\n");
+    printf("\x1b[31m""Input1 : /alpha\n""\x1b[0m");
+    printf("\n");
+    printf("\x1b[31m""Input2 : /JointState\n""\x1b[0m");
+    printf("\n");
+    printf("\x1b[34m""Output : /Lidar_motor_service\n""\x1b[0m");
+    printf("\n");
+    printf("\x1b[37m""*****Lidar_servo_controller*****\n""\x1b[0m");
+    ros::init(argc, argv, "write");
+    SubscribeAndPublish NH;
+    while(ros::ok())
+      {
+        ros::spinOnce();
+      }
+    return 0;
 } 

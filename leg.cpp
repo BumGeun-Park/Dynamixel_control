@@ -15,14 +15,18 @@
 
 #define PWM_Limit 885
 #define item "Goal_PWM"
-#define Tolerance DEG2RAD(2) //2 deg
+#define Tolerance DEG2RAD(0.3) // 0.3 deg
+#define initiate_power 100 // power 100
 
 #define scaling 40
 
 
 int error[4];
 double current[4];
-int t = 0;
+int t1 = 0;
+int t2 = 0;
+int t3 = 0;
+int t4 = 0;
 
 double R;
 double P;
@@ -40,28 +44,21 @@ public:
    
     void callback1_1(const rplidar_data::packet& input)
     {
+      if (t1==0 && t2==0 && t3==0 && t4==0)
+      {
+          ROS_INFO("Do initiate!");
+          return;
+      }
       dynamixel_workbench_msgs::DynamixelCommand srv;
+      std::string item_command = "";
+      std::string item_addr = item;
+      srv.request.command = item_command;
+      srv.request.addr_name = item_addr;
+
       error[0] = scaling*(input.packet[0]-P-R);
       error[1] = scaling*(input.packet[1]+P-R);
       error[2] = scaling*(input.packet[2]+P+R);
       error[3] = scaling*(input.packet[3]-P+R);
-      std::string item_command = "";
-      std::string item_addr = item;
-
-      if (t == 0)
-      {
-          for(int i = 2; i<6 ; ++i)
-          {
-              srv.request.command = item_command;
-              srv.request.id = i;
-              srv.request.addr_name = "Goal_Position";
-              srv.request.value = RAD2DATA(start_angle);
-          }
-          ROS_INFO("********Start********");
-          sleep(2);
-          t++;
-          return;
-      }
 
       for(int i = 1; i<5; ++i)
       {
@@ -82,9 +79,7 @@ public:
               error[i-1] = PWM_Limit;
             }
           int ID = i+1;
-          srv.request.command = item_command;
           srv.request.id = ID;
-          srv.request.addr_name = item_addr;
           srv.request.value = error[i-1];
           if (client.call(srv))
               {
@@ -99,10 +94,93 @@ public:
 
     void callback_check(const sensor_msgs::JointState& input)
     {
-        for(int i = 0; i<4; ++i)
+        dynamixel_workbench_msgs::DynamixelCommand srv;
+        std::string item_command = "";
+        std::string item_addr = item;
+        srv.request.command = item_command;
+        srv.request.addr_name = item_addr;
+
+        if (t1 == 0)
         {
-            current[i] = input.position[i+1];
+            ROS_INFO("1_leg");
+            srv.request.id = 2;
+            current[0] = input.position[1];
+            ROS_INFO("current_1 :%f",current[0]);
+            srv.request.value = initiate_power*abs(start_angle-current[0])/(start_angle-current[0]);
+            client.call(srv);
+            if(start_angle-Tolerance<current[0]&&current[0]<start_angle+Tolerance)
+              {
+                srv.request.value = 0;
+                client.call(srv);
+                t1++;
+                ROS_INFO("Finish 1");
+              }
+            ROS_INFO("Error-> leg1: %f, leg2: %f, leg3: %f, leg4: %f",abs(start_angle-input.position[0]),abs(start_angle-input.position[1]),abs(start_angle-input.position[2]),abs(start_angle-input.position[3]));
         }
+
+        if (t2 == 0)
+        {
+            ROS_INFO("2_leg");
+            srv.request.id = 3;
+            current[1] = input.position[2];
+            ROS_INFO("current_2 :%f",current[1]);
+            srv.request.value = initiate_power*abs(start_angle-current[1])/(start_angle-current[1]);
+            client.call(srv);
+            if(start_angle-Tolerance<current[1]&&current[1]<start_angle+Tolerance)
+              {
+                srv.request.value = 0;
+                client.call(srv);
+                t2++;
+                ROS_INFO("Finish 2");
+              }
+            ROS_INFO("Error-> leg1: %f, leg2: %f, leg3: %f, leg4: %f",abs(start_angle-input.position[0]),abs(start_angle-input.position[1]),abs(start_angle-input.position[2]),abs(start_angle-input.position[3]));
+        }
+
+        if (t3 == 0)
+        {
+            ROS_INFO("3_leg");
+            srv.request.id = 4;
+            current[2] = input.position[3];
+            ROS_INFO("current_3 :%f",current[2]);
+            srv.request.value = initiate_power*abs(start_angle-current[2])/(start_angle-current[2]);
+            client.call(srv);
+            if(start_angle-Tolerance<current[2]&&current[2]<start_angle+Tolerance)
+              {
+                srv.request.value = 0;
+                client.call(srv);
+                t3++;
+                ROS_INFO("Finish 3");
+              }
+            ROS_INFO("Error-> leg1: %f, leg2: %f, leg3: %f, leg4: %f",abs(start_angle-input.position[0]),abs(start_angle-input.position[1]),abs(start_angle-input.position[2]),abs(start_angle-input.position[3]));
+        }
+
+        if (t4 == 0)
+        {
+            ROS_INFO("4_leg");
+            srv.request.id = 5;
+            current[3] = input.position[4];
+            ROS_INFO("current_4 :%f",current[3]);
+            srv.request.value = initiate_power*abs(start_angle-current[3])/(start_angle-current[3]);
+            client.call(srv);
+            if(start_angle-Tolerance<current[3]&&current[3]<start_angle+Tolerance)
+              {
+                srv.request.value = 0;
+                client.call(srv);
+                t4++;
+                ROS_INFO("Finish 4");
+              }
+            ROS_INFO("Error-> leg1: %f, leg2: %f, leg3: %f, leg4: %f",abs(start_angle-input.position[0]),abs(start_angle-input.position[1]),abs(start_angle-input.position[2]),abs(start_angle-input.position[3]));
+        }
+
+
+        if(t1>0 && t2>0 && t3>0 && t4>0)
+        {
+            for(int k = 0; k<4; ++k)
+            {
+                current[k] = input.position[k+1];
+            }
+        }
+
     }
     void callback1_2(const rplidar_data::packet& input)
     {
@@ -132,9 +210,9 @@ int main(int argc, char **argv)
   printf("\n");
   printf("\x1b[31m""Input3 : /JointState\n""\x1b[0m");
   printf("\n");
-  printf("\x1b[34m""Output : /packet\n""\x1b[0m");
+  printf("\x1b[34m""Output : /Leg_motor_service\n""\x1b[0m");
   printf("\n");
-  printf("\x1b[37m""*****PID_controller*****\n""\x1b[0m");
+  printf("\x1b[37m""*****Leg_controller*****\n""\x1b[0m");
   ros::init(argc, argv, "leg");
   SubscribeAndPublish NH;
   while(ros::ok())
