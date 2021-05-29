@@ -15,10 +15,10 @@
 
 #define PWM_Limit 885
 #define item "Goal_PWM"
-#define Tolerance DEG2RAD(0.3) // 0.3 deg
-#define initiate_power 100 // power 100
+#define Tolerance DEG2RAD(0.1) // 0.1 deg
+#define initiate_power 50 // power 50
 
-#define scaling 40
+#define scaling 1
 
 
 int error[4];
@@ -81,13 +81,7 @@ public:
           int ID = i+1;
           srv.request.id = ID;
           srv.request.value = error[i-1];
-          if (client.call(srv))
-              {
-              }
-            else
-              {
-                  //ROS_ERROR("Failed to call dynamixel_command");
-              }
+          client.call(srv);
       }
       ROS_INFO("%d,%d,%d,%d",error[0],error[1],error[2],error[3]);
     }
