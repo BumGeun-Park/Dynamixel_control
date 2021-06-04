@@ -44,6 +44,8 @@ public:
       if (pseudo_Angle<center_point || pseudo_Angle>(int)RAD2DATA(motor_Limit))
         {
           ROS_INFO("Exceed motor limit!");
+          srv.request.value = pseudo_Angle;
+          client.call(srv);
           return;
         }
 
