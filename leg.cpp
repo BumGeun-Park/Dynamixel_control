@@ -19,6 +19,7 @@
 #define initiate_power 50 // power 50
 
 #define scaling 1
+#define reverse -1
 
 
 int error[4];
@@ -55,10 +56,10 @@ public:
         srv.request.command = item_command;
         srv.request.addr_name = item_addr;
 
-        error[0] = scaling*(input.packet[0]-P-R);
-        error[1] = scaling*(input.packet[1]+P-R);
-        error[2] = scaling*(input.packet[2]+P+R);
-        error[3] = scaling*(input.packet[3]-P+R);
+        error[0] = reverse*scaling*(input.packet[0]-P-R);
+        error[1] = reverse*scaling*(input.packet[1]+P-R);
+        error[2] = reverse*scaling*(input.packet[2]+P+R);
+        error[3] = reverse*scaling*(input.packet[3]-P+R);
 
         for(int i = 1; i<5; ++i)
         {
@@ -80,7 +81,7 @@ public:
             }
             int ID = i+1;
             srv.request.id = ID;
-            srv.request.value = error[i-1];
+            srv.request.value = reverse*error[i-1];
             client.call(srv);
         }
         ROS_INFO("%d,%d,%d,%d",error[0],error[1],error[2],error[3]);
@@ -100,7 +101,7 @@ public:
             srv.request.id = 2;
             current[0] = input.position[1];
             ROS_INFO("current_1 :%f",current[0]);
-            srv.request.value = initiate_power*abs(start_angle-current[0])/(start_angle-current[0]);
+            srv.request.value = reverse*initiate_power*abs(start_angle-current[0])/(start_angle-current[0]);
             client.call(srv);
             if(start_angle-Tolerance<current[0]&&current[0]<start_angle+Tolerance)
             {
@@ -118,7 +119,7 @@ public:
             srv.request.id = 3;
             current[1] = input.position[2];
             ROS_INFO("current_2 :%f",current[1]);
-            srv.request.value = initiate_power*abs(start_angle-current[1])/(start_angle-current[1]);
+            srv.request.value = reverse*initiate_power*abs(start_angle-current[1])/(start_angle-current[1]);
             client.call(srv);
             if(start_angle-Tolerance<current[1]&&current[1]<start_angle+Tolerance)
             {
@@ -136,7 +137,7 @@ public:
             srv.request.id = 4;
             current[2] = input.position[3];
             ROS_INFO("current_3 :%f",current[2]);
-            srv.request.value = initiate_power*abs(start_angle-current[2])/(start_angle-current[2]);
+            srv.request.value = reverse*initiate_power*abs(start_angle-current[2])/(start_angle-current[2]);
             client.call(srv);
             if(start_angle-Tolerance<current[2]&&current[2]<start_angle+Tolerance)
             {
@@ -154,7 +155,7 @@ public:
             srv.request.id = 5;
             current[3] = input.position[4];
             ROS_INFO("current_4 :%f",current[3]);
-            srv.request.value = initiate_power*abs(start_angle-current[3])/(start_angle-current[3]);
+            srv.request.value = reverse*initiate_power*abs(start_angle-current[3])/(start_angle-current[3]);
             client.call(srv);
             if(start_angle-Tolerance<current[3]&&current[3]<start_angle+Tolerance)
             {

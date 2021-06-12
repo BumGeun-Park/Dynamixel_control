@@ -48,6 +48,11 @@ public:
           client.call(srv);
           return;
         }
+      if (RAD2DATA(current)>pseudo_Angle || RAD2DATA(current)<center_point-(pseudo_Angle-center_point))
+      {
+          srv.request.value = pseudo_Angle;
+          client.call(srv);
+      }
 
       //check///////////////////////////////////////////////////////////////////////////////
       printf("\x1b[34m""[checking operation]""\x1b[0m");
